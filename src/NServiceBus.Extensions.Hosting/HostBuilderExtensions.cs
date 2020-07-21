@@ -26,5 +26,22 @@
 
             return hostBuilder;
         }
+        
+        /// <summary>
+        /// Configures the host to start an NServiceBus endpoint.
+        /// </summary>
+        public static IHostBuilder UseNServiceBus(this IHostBuilder hostBuilder, Func<HostBuilderContext, IServiceCollection, EndpointConfiguration> endpointConfigurationBuilder)
+        {
+            hostBuilder.ConfigureServices((context, serviceCollection) =>
+            {
+                var endpointConfiguration = endpointConfigurationBuilder(context, serviceCollection);
+                var startableEndpoint = EndpointWithExternallyManagedContainer.Create(endpointConfiguration, new ServiceCollectionAdapter(serviceCollection));
+
+                serviceCollection.AddSingleton(_ => startableEndpoint.MessageSession.Value);
+                serviceCollection.AddSingleton<IHostedService>(serviceProvider => new NServiceBusHostedService(startableEndpoint, serviceProvider));
+            });
+
+            return hostBuilder;
+        }
     }
 }
